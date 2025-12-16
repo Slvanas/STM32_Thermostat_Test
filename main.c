@@ -116,7 +116,27 @@ int main(void)
   {
       last_sensor_tick = HAL_GetTick();
       AHT20_Read_Data(&sensor_data);
-      if (sensor_data.ok) { /* 更新显示缓存 */ }
+      if (sensor_data.ok)
+      {
+          // 将浮点数转为整数用于显示
+          int t = (int)sensor_data.temperature;
+          int h = (int)sensor_data.humidity;
+
+          // 更新显示缓存 (假设 DISP_BUFF[0-1]是温度，[3-4]是湿度)
+          DISP_BUFF[0] = t / 10;
+          DISP_BUFF[1] = t % 10;
+          DISP_BUFF[2] = 10;     // 10 代表显示空或特定符号(取决于view.c的SEG_CODE)
+
+          DISP_BUFF[3] = h / 10;
+          DISP_BUFF[4] = h % 10;
+          DISP_BUFF[5] = 10;     // 同上
+      }
+      else
+      {
+          // 如果读取失败，显示错误代码
+          DISP_BUFF[0] = 0x0E;
+          DISP_BUFF[1] = 0x0F;
+      }
           Control_Process(&sensor_data);
   }
 
