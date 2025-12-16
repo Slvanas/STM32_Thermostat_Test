@@ -109,7 +109,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+
   AHT20_Read_Data(&sensor_data);
 
   if (sensor_data.ok)
@@ -132,7 +132,8 @@ int main(void)
 
         // 4. 延时 (温湿度不需要读太快，1秒一次足够)
         HAL_Delay(1000);
-  /* USER CODE END 3 */
+  }
+  	  /* USER CODE END 3 */
 }
 
 /**
