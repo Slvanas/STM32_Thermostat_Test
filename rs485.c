@@ -6,6 +6,7 @@
 extern AHT20_Data_t sensor_data;
 
 volatile uint8_t rs485_task_flag = 0; // 0:无任务, 1:需回传数据, 2:需回传状态
+volatile uint8_t rs485_cmd_received = 0; // 新增标志位
 
 // --- 变量定义 ---
 uint8_t rs485_rx_buffer[1];   // 接收单字节缓存
@@ -153,6 +154,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
         if(rec[0] == DEVICE_ADDR && recs >= 8) // 简单校验
         {
+        	rs485_cmd_received = 1;
             if(rec[1] == 0x03)
             {
                 if(rec[3] == 0x27 && rec[5] == 0x04)
@@ -167,22 +169,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                 }
             }
         }
-        // ... 继续接收 ...
         HAL_UART_Receive_IT(&huart1, rs485_rx_buffer, 1);
     }
 }
 
-// 新增一个处理函数供 main 调用
 void RS485_Process_Task(void)
 {
-    if(rs485_task_flag == 1)
+    if(rs485_cmd_received)
     {
-        sendpccmd27();
-        rs485_task_flag = 0;
-    }
-    else if(rs485_task_flag == 2)
-    {
-        sendpccmd34();
-        rs485_task_flag = 0;
+        rs485_cmd_received = 0;
+        if(rec[3] == 0x27) sendpccmd27();
+        else if(rec[3] == 0x34) sendpccmd34();
+        recs = 0; // 处理完再清零计数
     }
 }

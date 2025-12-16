@@ -112,26 +112,15 @@ int main(void)
 
   AHT20_Read_Data(&sensor_data);
   RS485_Process_Task();
-  if (sensor_data.ok)
-        {
-            // 2. 更新显示 (View层)
-            int t = (int)sensor_data.temperature;
-            int h = (int)sensor_data.humidity;
-            DISP_BUFF[0] = t / 10; DISP_BUFF[1] = t % 10; DISP_BUFF[2] = 0;
-            DISP_BUFF[3] = h / 10; DISP_BUFF[4] = h % 10; DISP_BUFF[5] = 0;
-        }
-        else
-        {
-            // 错误显示
-            DISP_BUFF[0] = 0xE; DISP_BUFF[1] = 0xE;
-        }
+  static uint32_t last_sensor_tick = 0;
+  if(HAL_GetTick() - last_sensor_tick > 1000)
+  {
+      last_sensor_tick = HAL_GetTick();
+      AHT20_Read_Data(&sensor_data);
+      if (sensor_data.ok) { /* 更新显示缓存 */ }
+          Control_Process(&sensor_data);
+  }
 
-        // 3. 执行控制逻辑 (Control层)
-        // 把读到的数据丢给控制模块，让它去决定开不开继电器
-        Control_Process(&sensor_data);
-
-        // 4. 延时 (温湿度不需要读太快，1秒一次足够)
-        HAL_Delay(1000);
   }
   	  /* USER CODE END 3 */
 }
