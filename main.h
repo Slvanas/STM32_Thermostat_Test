@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define AHT_POWER_Pin GPIO_PIN_15
 #define AHT_POWER_GPIO_Port GPIOB
+#define RS485_CTRL_Pin GPIO_PIN_11
+#define RS485_CTRL_GPIO_Port GPIOA
 #define KEY_SW_Pin GPIO_PIN_4
 #define KEY_SW_GPIO_Port GPIOB
 #define KEY_SET_Pin GPIO_PIN_5

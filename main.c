@@ -20,12 +20,15 @@
 #include "main.h"
 #include "i2c.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "view.h"
 #include "aht20.h"
+#include "rs485.h"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -91,8 +94,12 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
+  AHT20_Init();   					// 初始化传感器
+  RS485_Init();   					// 初始化通信 (开启接收中断)
+  Control_Init(); 					// 初始化继电器状态
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,27 +113,25 @@ int main(void)
   AHT20_Read_Data(&sensor_data);
 
   if (sensor_data.ok)
-  {
-      // 2. 将浮点数转换为整数用于显示
-      // 例如: 温度 25.6 -> 25, 湿度 60.3 -> 60
-      int temp_int = (int)sensor_data.temperature;
-      int humi_int = (int)sensor_data.humidity;
+        {
+            // 2. 更新显示 (View层)
+            int t = (int)sensor_data.temperature;
+            int h = (int)sensor_data.humidity;
+            DISP_BUFF[0] = t / 10; DISP_BUFF[1] = t % 10; DISP_BUFF[2] = 0;
+            DISP_BUFF[3] = h / 10; DISP_BUFF[4] = h % 10; DISP_BUFF[5] = 0;
+        }
+        else
+        {
+            // 错误显示
+            DISP_BUFF[0] = 0xE; DISP_BUFF[1] = 0xE;
+        }
 
-      // 3. 更新 View 模块的显示缓存 (DISP_BUFF)
-      // 假设前3位显示温度，后3位显示湿度
-      // 温度: 2 5 C (假设C用某个符号代替，这里暂用数字0补位)
-      DISP_BUFF[0] = temp_int / 10;      // 十位
-      DISP_BUFF[1] = temp_int % 10;      // 个位
-      DISP_BUFF[2] = 0;                  // 间隔
+        // 3. 执行控制逻辑 (Control层)
+        // 把读到的数据丢给控制模块，让它去决定开不开继电器
+        Control_Process(&sensor_data);
 
-      // 湿度: 6 0 H
-      DISP_BUFF[3] = humi_int / 10;      // 十位
-      DISP_BUFF[4] = humi_int % 10;      // 个位
-      DISP_BUFF[5] = 0;                  // 间隔
-  }
-
-  // 4. 延时 (温湿度不需要读太快，1秒一次足够)
-  HAL_Delay(1000);
+        // 4. 延时 (温湿度不需要读太快，1秒一次足够)
+        HAL_Delay(1000);
   /* USER CODE END 3 */
 }
 
@@ -168,7 +173,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
