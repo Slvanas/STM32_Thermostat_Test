@@ -111,7 +111,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
   AHT20_Read_Data(&sensor_data);
-
+  RS485_Process_Task();
   if (sensor_data.ok)
         {
             // 2. 更新显示 (View层)

@@ -5,6 +5,8 @@
 // 引用外部变量 (来自 main.c 或 aht20.c)
 extern AHT20_Data_t sensor_data;
 
+volatile uint8_t rs485_task_flag = 0; // 0:无任务, 1:需回传数据, 2:需回传状态
+
 // --- 变量定义 ---
 uint8_t rs485_rx_buffer[1];   // 接收单字节缓存
 uint8_t rec[20];              // 接收完整包缓存
@@ -35,51 +37,6 @@ void RS485_Init(void)
     HAL_UART_Receive_IT(&huart1, rs485_rx_buffer, 1);
 }
 
-// --- 接收中断回调 (CubeMX生成的代码会自动调用这里) ---
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if(huart->Instance == USART1)
-    {
-        // 1. 存入 buffer
-        rec[recs++] = rs485_rx_buffer[0];
-
-        // 2. 简单的防溢出
-        if(recs > 20) recs = 0;
-
-        // 3. 协议解析 (模拟旧代码逻辑)
-        // 收到地址 -> 收到0x03 -> 收到长度 -> 判断命令
-        if(rec[0] == DEVICE_ADDR)
-        {
-            if(recs >= 2 && rec[1] == 0x03)
-            {
-                // 确保收到了足够的字节 (这里简化判断，实际可更严谨)
-                if(recs >= 8)
-                {
-                    // 命令 0x27: 读温湿度数据
-                    if(rec[3] == 0x27 && rec[5] == 0x04)
-                    {
-                        sendpccmd27();
-                        recs = 0; // 清空接收计数，准备下一次
-                    }
-                    // 命令 0x34: 读设备状态
-                    else if(rec[3] == 0x34 && rec[5] == 0x01)
-                    {
-                        sendpccmd34();
-                        recs = 0;
-                    }
-                }
-            }
-        }
-        else
-        {
-            // 地址不对，复位 (实际应用中可能需要更智能的帧同步)
-            recs = 0;
-        }
-
-        // 4. 继续开启接收
-        HAL_UART_Receive_IT(&huart1, rs485_rx_buffer, 1);
-    }
-}
 
 // --- 发送命令 0x27 (读数值) ---
 void sendpccmd27(void)
@@ -184,4 +141,48 @@ unsigned char CRC16(unsigned char *tempsend, unsigned char Data_Len)
     tempsend[Data_Len + 1] = CRC16Hi;
     tempsend[Data_Len] = CRC16Lo;
     return 1;
+}
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == USART1)
+    {
+        rec[recs++] = rs485_rx_buffer[0];
+        if(recs > 20) recs = 0;
+
+        if(rec[0] == DEVICE_ADDR && recs >= 8) // 简单校验
+        {
+            if(rec[1] == 0x03)
+            {
+                if(rec[3] == 0x27 && rec[5] == 0x04)
+                {
+                    rs485_task_flag = 1; // 通知主循环发送数据
+                    recs = 0;
+                }
+                else if(rec[3] == 0x34 && rec[5] == 0x01)
+                {
+                    rs485_task_flag = 2; // 通知主循环发送状态
+                    recs = 0;
+                }
+            }
+        }
+        // ... 继续接收 ...
+        HAL_UART_Receive_IT(&huart1, rs485_rx_buffer, 1);
+    }
+}
+
+// 新增一个处理函数供 main 调用
+void RS485_Process_Task(void)
+{
+    if(rs485_task_flag == 1)
+    {
+        sendpccmd27();
+        rs485_task_flag = 0;
+    }
+    else if(rs485_task_flag == 2)
+    {
+        sendpccmd34();
+        rs485_task_flag = 0;
+    }
 }

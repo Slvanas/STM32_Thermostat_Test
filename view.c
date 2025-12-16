@@ -24,8 +24,7 @@ void View_Scan(void)
     // 1. 消隐 (关位选和段选)
     // 根据原理图: 位选在 PB0-2, PB12-14 [cite: 327-362]
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
-   // 根据原理图: 段选在 PA0-PA7 [cite: 82-115, 289-297]
-    HAL_GPIO_WritePin(GPIOA, 0x00FF, GPIO_PIN_RESET);
+
 
     // 2. 准备数据
     uint8_t num_val = DISP_BUFF[scan_index];
