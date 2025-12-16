@@ -150,21 +150,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if(huart->Instance == USART1)
     {
         rec[recs++] = rs485_rx_buffer[0];
-        if(recs > 20) recs = 0;
+        if(recs >= 20) recs = 0;
 
-        if(rec[0] == DEVICE_ADDR && recs >= 8) // 简单校验
+        if(rec[0] == DEVICE_ADDR && recs >= 8)
         {
-        	rs485_cmd_received = 1;
             if(rec[1] == 0x03)
             {
                 if(rec[3] == 0x27 && rec[5] == 0x04)
                 {
-                    rs485_task_flag = 1; // 通知主循环发送数据
-                    recs = 0;
+                    rs485_task_flag = 1; // 任务1：回传数据
+                    recs = 0;            // 清空接收计数
                 }
                 else if(rec[3] == 0x34 && rec[5] == 0x01)
                 {
-                    rs485_task_flag = 2; // 通知主循环发送状态
+                    rs485_task_flag = 2; // 任务2：回传状态
                     recs = 0;
                 }
             }
@@ -175,11 +174,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void RS485_Process_Task(void)
 {
-    if(rs485_cmd_received)
-    {
-        rs485_cmd_received = 0;
-        if(rec[3] == 0x27) sendpccmd27();
-        else if(rec[3] == 0x34) sendpccmd34();
-        recs = 0; // 处理完再清零计数
-    }
+	switch(rs485_task_flag)
+	    {
+	        case 1:
+	            sendpccmd27();
+	            rs485_task_flag = 0; // 清除标志
+	            break;
+	        case 2:
+	            sendpccmd34();
+	            rs485_task_flag = 0; // 清除标志
+	            break;
+	        default:
+	            break;
+	    }
 }

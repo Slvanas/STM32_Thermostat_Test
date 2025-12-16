@@ -110,7 +110,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-  AHT20_Read_Data(&sensor_data);
   RS485_Process_Task();
   static uint32_t last_sensor_tick = 0;
   if(HAL_GetTick() - last_sensor_tick > 1000)
@@ -177,7 +176,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM3)
     {
-        // 仅仅调用 view.c 里的扫描任务
         View_Scan();
     }
 }
