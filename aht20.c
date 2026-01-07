@@ -6,11 +6,9 @@
 
 void AHT20_Init(void)
 {
-    // 1. 【关键】给传感器上电！
-    // 根据原理图，PB15 连接 AHT-VDD
+
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
 
-    // 2. 上电后必须等待至少 100ms 让传感器内部电路稳定
     HAL_Delay(100);
 }
 
